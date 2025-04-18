@@ -1,17 +1,17 @@
-name: Example Build Image
+name: Dev Build Image
 
 on:
   push:
     branches:
-      - "prod"
+      - "dev"
     paths:
-      - .github/workflows/build_deploy_prod.yaml
+      - .github/workflows/build_deploy_dev.yaml
       - "worker/**"
 
 env:
-  AWS_REGION: us-east-1                 
-  ECR_REPOSITORY: voting-app 
-  ENV: "prod"
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: voting-app
+  ENV: "dev"
 
 permissions:
   id-token: write
@@ -19,9 +19,9 @@ permissions:
 
 jobs:
   build:
-    name: Build Image Production
+    name: Build Image Development
     runs-on: ubuntu-latest
-    environment: Production
+    environment: Development
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -31,7 +31,7 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        # aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
@@ -46,7 +46,7 @@ jobs:
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG --build-arg aws_region=${{ env.AWS_REGION }} --build-arg copy_or_mount="copy" -f worker/Dockerfile ./worker
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG
-        echo "::set-output name=worker_image::$ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG"
+        echo "worker_image=$ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: End Build
-      run: echo "Build Success"
+      run: echo "Dev Build Success"
