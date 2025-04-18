@@ -4,7 +4,7 @@ on:
     branches:
       - "dev"
     paths:
-      - .github/workflows/build_deploy_dev.yaml
+      - .github/workflows/lks-dev-pipeline.yaml
       - "worker/**"
 
 env:
