@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/lks-dev-pipeline.yaml
       - "worker/**"
+      - "result/**"
+      - "vote/**"
 
 env:
   AWS_REGION: us-east-1
@@ -17,11 +19,18 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build Image Development
+  build_worker:
+
+    name: Build Image Worker Development
     runs-on: ubuntu-latest
+    if: ${{ contains(join(github.event.head_commit.modified, ','), 'worker/') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/lks-dev-pipeline.yaml')}}
     environment: Development
     steps:
+    - name: Update docker version
+      run: |
+        sudo apt-get update
+        sudo apt-get install docker-ce docker-ce-cli containerd.io
+
     - name: Checkout
       uses: actions/checkout@v3
 
@@ -48,4 +57,82 @@ jobs:
         echo "worker_image=$ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: End Build
-      run: echo "Dev Build Success"
+      run: echo "Dev Build Worker Success"
+  build_result:  
+
+    name: Build Image Result Development
+    runs-on: ubuntu-latest
+    if: ${{ contains(join(github.event.head_commit.modified, ','), 'result/') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/lks-dev-pipeline.yaml') }}
+    environment: Development
+    steps:
+    - name: Update docker version
+      run: |
+        sudo apt-get update
+        sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        # aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        RESULT_IMAGE_TAG: result-${{ env.ENV }}-latest
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG --build-arg aws_region=${{ env.AWS_REGION }} --build-arg copy_or_mount="copy" -f result/Dockerfile ./result
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
+        echo "result_image=$ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: End Build
+      run: echo "Dev Build Result Success"  
+  build_vote:
+
+    name: Build Image Vote Development
+    runs-on: ubuntu-latest
+    if: ${{ contains(join(github.event.head_commit.modified, ','), 'vote/') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/lks-dev-pipeline.yaml')}}
+    environment: Development
+    steps:
+    - name: Update docker version
+      run: |
+        sudo apt-get update
+        sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        # aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        VOTE_IMAGE_TAG: vote-${{ env.ENV }}-latest
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG --build-arg aws_region=${{ env.AWS_REGION }} --build-arg copy_or_mount="copy" -f vote/Dockerfile ./vote
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
+        echo "vote_image=$ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: End Build
+      run: echo "Dev Build Vote Success"
