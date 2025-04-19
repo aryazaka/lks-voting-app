@@ -214,7 +214,7 @@ jobs:
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
       
-      -name: End Pull Image
+      - name: End Pull Image
         run: |
           echo "Success pull image on master"
 
@@ -254,7 +254,7 @@ jobs:
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
       
-      -name: End Pull Image
+      - name: End Pull Image
         run: |
           echo "Success pull image on node1"
 
@@ -294,6 +294,6 @@ jobs:
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
       
-      -name: End Pull Image
+      - name: End Pull Image
         run: |
           echo "Success pull image on node2"
