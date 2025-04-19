@@ -8,6 +8,7 @@ on:
       - "worker/**"
       - "result/**"
       - "vote/**"
+      - "docker-stack.yaml"
 
 env:
   AWS_REGION: us-east-1
