@@ -1,4 +1,4 @@
-name: Dev Build Image
+name: Dev Build Application 
 on:
   push:
     branches:
@@ -124,9 +124,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Clean up dangling Docker images
-        run: docker image prune -f
-  
       - name: Pull Image 
         id: pull-image
         env:
@@ -139,6 +136,10 @@ jobs:
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG   
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
+      
+      - name: Clean up dangling Docker images
+        run: docker image prune -f
+  
       
       - name: End Pull Image
         run: |
@@ -166,9 +167,6 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Clean up dangling Docker images
-        run: docker image prune -f
   
       - name: Pull Image 
         id: pull-image
@@ -183,6 +181,9 @@ jobs:
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
       
+      - name: Clean up dangling Docker images
+        run: docker image prune -f
+
       - name: End Pull Image
         run: |
           echo "Success pull image on node1"
@@ -210,9 +211,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Clean up dangling Docker images
-        run: docker image prune -f
-
       - name: Pull Image 
         id: pull-image
         env:
@@ -225,7 +223,27 @@ jobs:
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG   
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG
+
+      - name: Clean up dangling Docker images
+        run: docker image prune -f
       
       - name: End Pull Image
         run: |
           echo "Success pull image on node2"
+    
+  deploy:  
+    name: Deploy Application into docker swarm
+    runs-on: [self-hosted, master]
+    needs: pull_image_on_master
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Deploy application images to Docker Swarm
+        run: |
+          docker node ls
+          docker service ls
+          docker stack ls
+          docker stack rm stackdemo
+          sleep 30
+          docker stack deploy --compose-file docker-stack.yml stackdemo
