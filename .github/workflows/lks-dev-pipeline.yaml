@@ -20,8 +20,8 @@ permissions:
 
 jobs:
   build_worker:
-
     name: Build Image Worker Development
+    runs-on: ubuntu-latest
     environment: Development
     steps:
     - name: Checkout
@@ -74,7 +74,6 @@ jobs:
       run: echo "Dev Build Worker Success"
 
   build_result:  
-
     name: Build Image Result Development
     runs-on: ubuntu-latest
     environment: Development
