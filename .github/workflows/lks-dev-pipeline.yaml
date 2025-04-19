@@ -22,19 +22,30 @@ jobs:
   build_worker:
 
     name: Build Image Worker Development
-    runs-on: ubuntu-latest
-    if: ${{ contains(join(github.event.head_commit.modified, ','), 'worker/') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/lks-dev-pipeline.yaml')}}
     environment: Development
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Check if worker folder or pipeline file changed
+      id: check_worker
+      run: |
+        git fetch origin ${{ github.event.before }}
+        CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^worker/|^.github/workflows/lks-dev-pipeline.yaml' || true)
+        if [[ -z "$CHANGED" ]]; then
+           echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Update docker version
+      if: steps.check_worker.outputs.skip == "false"
       run: |
         sudo apt-get update
         sudo apt-get install docker-ce docker-ce-cli containerd.io
 
-    - name: Checkout
-      uses: actions/checkout@v3
-
     - name: Configure AWS Credentials
+      if: steps.check_worker.outputs.skip == "false"
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
@@ -43,10 +54,12 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
+      if: steps.check_worker.outputs.skip == "false"
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
     - name: Build, tag, and push image to Amazon ECR
+      if: steps.check_worker.outputs.skip == "false"
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -57,23 +70,37 @@ jobs:
         echo "worker_image=$ECR_REGISTRY/$ECR_REPOSITORY:$WORKER_IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: End Build
+      if: steps.check_worker.outputs.skip == "false"
       run: echo "Dev Build Worker Success"
+
   build_result:  
 
     name: Build Image Result Development
     runs-on: ubuntu-latest
-    if: ${{ contains(join(github.event.head_commit.modified, ','), 'result/') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/lks-dev-pipeline.yaml') }}
     environment: Development
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Check if result folder or pipeline file changed
+      id: check_result
+      run: |
+        git fetch origin ${{ github.event.before }}
+        CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^result/|^.github/workflows/lks-dev-pipeline.yaml' || true)
+        if [[ -z "$CHANGED" ]]; then
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Update docker version
+      if: steps.check_result.outputs.skip == "false"
       run: |
         sudo apt-get update
         sudo apt-get install docker-ce docker-ce-cli containerd.io
 
-    - name: Checkout
-      uses: actions/checkout@v3
-
     - name: Configure AWS Credentials
+      if: steps.check_result.outputs.skip == "false"
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
@@ -82,10 +109,12 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
+      if: steps.check_result.outputs.skip == "false"
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
     - name: Build, tag, and push image to Amazon ECR
+      if: steps.check_result.outputs.skip == "false"
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -96,23 +125,36 @@ jobs:
         echo "result_image=$ECR_REGISTRY/$ECR_REPOSITORY:$RESULT_IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: End Build
+      if: steps.check_result.outputs.skip == "false"
       run: echo "Dev Build Result Success"  
-  build_vote:
 
+  build_vote:
     name: Build Image Vote Development
     runs-on: ubuntu-latest
-    if: ${{ contains(join(github.event.head_commit.modified, ','), 'vote/') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/lks-dev-pipeline.yaml')}}
     environment: Development
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Check if vote folder or pipeline file changed
+      id: check_vote
+      run: |
+        git fetch origin ${{ github.event.before }}
+        CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^vote/|^.github/workflows/lks-dev-pipeline.yaml' || true)
+        if [[ -z "$CHANGED" ]]; then
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Update docker version
+      if: steps.check_vote.outputs.skip == "false"
       run: |
         sudo apt-get update
         sudo apt-get install docker-ce docker-ce-cli containerd.io
 
-    - name: Checkout
-      uses: actions/checkout@v3
-
     - name: Configure AWS Credentials
+      if: steps.check_vote.outputs.skip == "false"
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
@@ -121,10 +163,12 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
+      if: steps.check_vote.outputs.skip == "false"
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
     - name: Build, tag, and push image to Amazon ECR
+      if: steps.check_vote.outputs.skip == "false"
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -135,4 +179,5 @@ jobs:
         echo "vote_image=$ECR_REGISTRY/$ECR_REPOSITORY:$VOTE_IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: End Build
+      if: steps.check_vote.outputs.skip == "false"
       run: echo "Dev Build Vote Success"
