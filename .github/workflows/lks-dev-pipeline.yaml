@@ -8,7 +8,7 @@ on:
       - "worker/**"
       - "result/**"
       - "vote/**"
-      - "docker-stack.yaml"
+      - "docker-stack.yml"
 
 env:
   AWS_REGION: us-east-1
@@ -36,13 +36,13 @@ jobs:
         CHANGES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
 
         echo "Changes detected: $CHANGES"
-         if echo "$CHANGES" | grep -qE "^worker/|^\.github/workflows/lks-dev-pipeline.yaml"; then
-          echo "worker_changed=true" >> $GITHUB_ENV
+         if echo "$CHANGES" | grep -qE "^worker/|^\.github/workflows/lks-dev-pipeline.yaml|^docker-stack.yml"; then
+          echo "worker_changed=true" >> $GITHUB_ENV 
         fi
-         if echo "$CHANGES" | grep -qE "^result/|^\.github/workflows/lks-dev-pipeline.yaml"; then
+         if echo "$CHANGES" | grep -qE "^result/|^\.github/workflows/lks-dev-pipeline.yaml|^docker-stack.yml"; then
           echo "result_changed=true" >> $GITHUB_ENV
         fi
-         if echo "$CHANGES" | grep -qE "^vote/|^\.github/workflows/lks-dev-pipeline.yaml"; then
+         if echo "$CHANGES" | grep -qE "^vote/|^\.github/workflows/lks-dev-pipeline.yaml|^docker-stack.yml"; then
           echo "vote_changed=true" >> $GITHUB_ENV
         fi
 
