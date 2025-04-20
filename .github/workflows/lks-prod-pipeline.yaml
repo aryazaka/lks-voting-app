@@ -70,7 +70,7 @@ jobs:
       if: ${{ steps.check_changes.outputs.worker_changed == 'true' }}
       id: build_worker
       env:
-        IMAGE_TAG: worker-${{ github.sha }}
+        IMAGE_TAG: worker-${{ env.ENV }}-latest
       run: |
         docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
           -f worker/Dockerfile ./worker
@@ -81,7 +81,7 @@ jobs:
       if: ${{ steps.check_changes.outputs.result_changed == 'true' }}
       id: build_result
       env:
-        IMAGE_TAG: result-${{ github.sha }}
+        IMAGE_TAG: result-${{ env.ENV }}-latest
       run: |
         docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
           -f result/Dockerfile ./result
@@ -92,7 +92,7 @@ jobs:
       if: ${{ steps.check_changes.outputs.vote_changed == 'true' }}
       id: build_vote
       env:
-        IMAGE_TAG: vote-${{ github.sha }}
+        IMAGE_TAG: vote-${{ env.ENV }}-latest
       run: |
         docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
           -f vote/Dockerfile ./vote
