@@ -235,7 +235,10 @@ jobs:
   deploy:  
     name: Deploy Application into docker swarm
     runs-on: [self-hosted, master]
-    needs: pull_image_on_master
+    needs: 
+      - pull_image_on_master
+      - pull_image_on_node1
+      - pull_image_on_node2
     steps:
       - name: Checkout
         uses: actions/checkout@v3
