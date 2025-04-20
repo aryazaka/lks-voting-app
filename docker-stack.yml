@@ -1,12 +1,13 @@
 version: "3.9"
 
 services:
-
   redis:
     image: redis:alpine
     networks:
       - frontend
-      - backend 
+    deploy:
+      placement:
+        constraints: [node.role == worker]
 
   db:
     image: postgres:15-alpine
@@ -16,8 +17,10 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
-      - frontend
       - backend
+    deploy:
+      placement:
+        constraints: [node.role == worker]
 
   vote:
     image: 537124946916.dkr.ecr.us-east-1.amazonaws.com/lks-voting-image:vote-dev-latest
@@ -27,6 +30,8 @@ services:
       - frontend
     deploy:
       replicas: 3
+      placement:
+        constraints: [node.role == manager]
 
   result:
     image: 537124946916.dkr.ecr.us-east-1.amazonaws.com/lks-voting-image:result-dev-latest
@@ -36,6 +41,8 @@ services:
       - backend
     deploy:
       replicas: 3
+      placement:
+        constraints: [node.role == manager]
 
   worker:
     image: 537124946916.dkr.ecr.us-east-1.amazonaws.com/lks-voting-image:worker-dev-latest
@@ -44,10 +51,14 @@ services:
       - backend
     deploy:
       replicas: 3
+      placement:
+        constraints: [node.role == manager]
 
 networks:
   frontend:
+    driver: overlay
   backend:
+    driver: overlay
 
 volumes:
   db-data:
