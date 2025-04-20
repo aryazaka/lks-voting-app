@@ -1,0 +1,150 @@
+name: Prod Build and Deploy to ECS
+on:
+  push:
+    branches:
+      - "prod"
+    paths:
+      - .github/workflows/lks-prod-pipeline.yaml
+      - "worker/**"
+      - "result/**"
+      - "vote/**"
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: lks-voting-image
+  ECS_CLUSTER: lks-voting-cluster
+  ECS_SERVICE_WORKER: lks-worker-service
+  ECS_SERVICE_RESULT: lks-result-service
+  ECS_SERVICE_VOTE: lks-vote-service
+  ENV: "prod"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build_images:
+    name: Build Image Production
+    runs-on: ubuntu-latest
+    environment: Production
+    outputs:
+      worker_changed: ${{ steps.check_changes.outputs.worker_changed }}
+      result_changed: ${{ steps.check_changes.outputs.result_changed }}
+      vote_changed: ${{ steps.check_changes.outputs.vote_changed }}
+      worker_image: ${{ steps.build_worker.outputs.image }}
+      result_image: ${{ steps.build_result.outputs.image }}
+      vote_image: ${{ steps.build_vote.outputs.image }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Detect Changes
+      id: check_changes
+      run: |
+        git fetch --depth=1 origin ${{ github.event.before }}
+        CHANGES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+        
+        echo "worker_changed=$(echo "$CHANGES" | grep -qE "^worker/|^\.github/workflows/lks-prod-pipeline.yaml" && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+        echo "result_changed=$(echo "$CHANGES" | grep -qE "^result/|^\.github/workflows/lks-prod-pipeline.yaml" && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+        echo "vote_changed=$(echo "$CHANGES" | grep -qE "^vote/|^\.github/workflows/lks-prod-pipeline.yaml" && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+
+    - name: Set up Docker Buildx
+      if: ${{ steps.check_changes.outputs.worker_changed == 'true' || steps.check_changes.outputs.result_changed == 'true' || steps.check_changes.outputs.vote_changed == 'true' }}
+      uses: docker/setup-buildx-action@v2
+
+    - name: Configure AWS Credentials
+      if: ${{ steps.check_changes.outputs.worker_changed == 'true' || steps.check_changes.outputs.result_changed == 'true' || steps.check_changes.outputs.vote_changed == 'true' }}
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      if: ${{ steps.check_changes.outputs.worker_changed == 'true' || steps.check_changes.outputs.result_changed == 'true' || steps.check_changes.outputs.vote_changed == 'true' }}
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build and Push Worker Image
+      if: ${{ steps.check_changes.outputs.worker_changed == 'true' }}
+      id: build_worker
+      env:
+        IMAGE_TAG: worker-${{ github.sha }}
+      run: |
+        docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+          -f worker/Dockerfile ./worker
+        docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+        echo "image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+    - name: Build and Push Result Image
+      if: ${{ steps.check_changes.outputs.result_changed == 'true' }}
+      id: build_result
+      env:
+        IMAGE_TAG: result-${{ github.sha }}
+      run: |
+        docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+          -f result/Dockerfile ./result
+        docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+        echo "image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+    - name: Build and Push Vote Image
+      if: ${{ steps.check_changes.outputs.vote_changed == 'true' }}
+      id: build_vote
+      env:
+        IMAGE_TAG: vote-${{ github.sha }}
+      run: |
+        docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+          -f vote/Dockerfile ./vote
+        docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+        echo "image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+  deploy_to_ecs:
+    name: Deploy Application to ECS
+    needs: build_images
+    runs-on: ubuntu-latest
+    environment: Production
+    steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy Worker Service
+      if: ${{ needs.build_images.outputs.worker_changed == 'true' }}
+      run: |
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE_WORKER }} \
+          --force-new-deployment \
+          --region ${{ env.AWS_REGION }}
+        echo "Worker service deployment triggered"
+
+    - name: Deploy Result Service
+      if: ${{ needs.build_images.outputs.result_changed == 'true' }}
+      run: |
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE_RESULT }} \
+          --force-new-deployment \
+          --region ${{ env.AWS_REGION }}
+        echo "Result service deployment triggered"
+
+    - name: Deploy Vote Service
+      if: ${{ needs.build_images.outputs.vote_changed == 'true' }}
+      run: |
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE_VOTE }} \
+          --force-new-deployment \
+          --region ${{ env.AWS_REGION }}
+        echo "Vote service deployment triggered"
+
+    - name: Verify Deployments
+      run: |
+        echo "Services deployed:"
+        echo "Worker: ${{ needs.build_images.outputs.worker_changed }}"
+        echo "Result: ${{ needs.build_images.outputs.result_changed }}"
+        echo "Vote: ${{ needs.build_images.outputs.vote_changed }}"
